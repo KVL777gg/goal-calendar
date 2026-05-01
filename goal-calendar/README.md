@@ -1,6 +1,6 @@
-# Календарь целей
+# Goal Calendar
 
-React + Vite + Tailwind CSS приложение для целей, привычек и заметок.
+Мобильный календарь целей на React + Vite + Tailwind.
 
 ## Запуск локально
 
@@ -17,13 +17,15 @@ npm run build
 
 ## Деплой на Vercel
 
-1. Загрузите эту папку в GitHub-репозиторий.
-2. На Vercel выберите Import Git Repository.
-3. Framework Preset: Vite.
-4. Build Command: npm run build.
-5. Output Directory: dist.
-6. Нажмите Deploy.
+1. Создай репозиторий на GitHub.
+2. Загрузи все файлы из этой папки.
+3. Зайди на Vercel.
+4. Import Project → выбери репозиторий.
+5. Framework Preset: Vite.
+6. Build Command: `npm run build`.
+7. Output Directory: `dist`.
 
 ## Важно
 
-В этой версии данные сохраняются в localStorage конкретного устройства. Для синхронизации между устройствами нужен Supabase или Firebase.
+Сейчас данные сохраняются в `localStorage`, поэтому они хранятся отдельно на каждом устройстве.
+Для синхронизации между устройствами позже нужно подключить Supabase или Firebase.
