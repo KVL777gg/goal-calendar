@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-const STORAGE_KEY = "goal-calendar-minimal-v1";
+const STORAGE_KEY = "goal-calendar-theme-photo-v1";
 
 function pad(n) {
   return String(n).padStart(2, "0");
@@ -20,7 +20,7 @@ function fromKey(key) {
   return new Date(year, month - 1, day);
 }
 
-function monthLabel(date) {
+function monthName(date) {
   return date.toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
 }
 
@@ -133,6 +133,7 @@ function safeLoadData() {
     if (typeof localStorage === "undefined") return defaultData();
     const keys = [
       STORAGE_KEY,
+      "goal-calendar-minimal-v1",
       "goal-calendar-mobile-v5",
       "goal-calendar-prototype-v4-mobile",
       "goal-calendar-prototype-v3",
@@ -150,6 +151,7 @@ function safeLoadData() {
         notes: parsed.notes && typeof parsed.notes === "object" ? parsed.notes : {},
       };
     }
+
     return defaultData();
   } catch {
     return defaultData();
@@ -162,7 +164,7 @@ function safeSaveData(data) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     }
   } catch {
-    // no-op
+    // ignore storage errors
   }
 }
 
@@ -178,18 +180,23 @@ function runSelfTests() {
   console.assert(fromKey("2026-05-02").getMonth() === 4, "fromKey restores month");
 
   const rangeGoal = { type: "range", startDate: "2026-05-02", endDate: "2026-05-05" };
-  console.assert(isGoalActiveOnDate(rangeGoal, "2026-05-03") === true, "Range works inside interval");
-  console.assert(isGoalActiveOnDate(rangeGoal, "2026-05-06") === false, "Range stops correctly");
+  console.assert(isGoalActiveOnDate(rangeGoal, "2026-05-03") === true, "Range active inside period");
+  console.assert(isGoalActiveOnDate(rangeGoal, "2026-05-06") === false, "Range inactive after end");
 }
 
 if (typeof console !== "undefined") runSelfTests();
 
-function StatCard({ label, value, extra }) {
+function StatCard({ label, value, sublabel, emoji = null }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-[#16161d] p-4">
-      <p className="text-xs text-white/45">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-white">{value}</p>
-      <p className="mt-1 text-xs text-white/40">{extra}</p>
+    <div className="rounded-[1.7rem] border border-white/8 bg-[#17171d] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.28)]">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-[11px] uppercase tracking-wide text-white/35">{label}</p>
+          <p className="mt-1 text-3xl font-black leading-none text-white">{value}</p>
+          <p className="mt-1 text-xs text-white/40">{sublabel}</p>
+        </div>
+        {emoji ? <div className="text-2xl">{emoji}</div> : null}
+      </div>
     </div>
   );
 }
@@ -207,6 +214,7 @@ export default function App() {
   const [noteDraft, setNoteDraft] = useState(() => safeLoadData().notes?.[toKey(new Date())] || "");
 
   useEffect(() => safeSaveData(data), [data]);
+
   useEffect(() => {
     setNoteDraft(data.notes?.[selectedKey] || "");
   }, [selectedKey, data.notes]);
@@ -247,6 +255,16 @@ export default function App() {
     return count;
   }, [data.goals, data.completions]);
 
+  const upcomingGoals = useMemo(() => {
+    const today = toKey(new Date());
+    return data.goals
+      .filter((goal) => {
+        const normalized = normalizeGoal(goal);
+        return normalized.type === "always" || normalized.endDate >= today;
+      })
+      .slice(0, 4);
+  }, [data.goals]);
+
   function moveMonth(delta) {
     setViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
   }
@@ -263,7 +281,11 @@ export default function App() {
     const active = activeGoalsForDate(data.goals, key);
     const completed = data.completions[key] || {};
     const done = active.filter((goal) => completed[goal.id]).length;
-    return { active: active.length, done, progress: active.length ? Math.round((done / active.length) * 100) : 0 };
+    return {
+      active: active.length,
+      done,
+      progress: active.length ? Math.round((done / active.length) * 100) : 0,
+    };
   }
 
   function toggleGoal(goalId) {
@@ -348,67 +370,67 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d0d12] text-white">
-      <main className="mx-auto max-w-6xl px-4 pb-10 pt-6 sm:px-6 md:pt-8">
-        <header className="mb-6 flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="truncate text-[clamp(2.3rem,8vw,4rem)] font-black capitalize leading-none">{monthLabel(viewDate)}</h1>
+    <div className="min-h-screen bg-[#0d0d10] text-white">
+      <main className="mx-auto max-w-7xl px-4 pb-10 pt-5 sm:px-6 lg:px-8">
+        <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-2xl">
+            <div className="mb-3 inline-flex items-center rounded-full border border-white/8 bg-[#17171d] px-3 py-1 text-xs text-white/70">
+              Календарь целей
             </div>
-            <button type="button" onClick={goToday} className="mt-2 text-left text-base font-medium text-white/55">
-              Сегодня, {humanDate(todayKey)}
-            </button>
+            <h1 className="text-4xl font-black leading-none tracking-tight sm:text-5xl">
+              Планируй день и отмечай
+              <br />
+              выполнение
+            </h1>
+            <p className="mt-3 text-sm text-white/50 sm:text-base">
+              Теперь цели можно ставить на один день, на диапазон дат или как постоянную привычку.
+            </p>
           </div>
 
-          <button
-            type="button"
-            onClick={openAddForm}
-            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-white/10 bg-[#1a1a22] text-3xl text-white transition hover:bg-[#23232d] active:scale-95"
-            aria-label="Добавить цель"
-          >
-            <span className="block leading-none -translate-y-[1px]">+</span>
-          </button>
+          <div className="grid grid-cols-3 gap-3 lg:w-[420px]">
+            <StatCard label="выбранный день" value={`${progress}%`} sublabel={`${completedToday} из ${activeGoals.length}`} />
+            <StatCard label="месяц" value={`${monthStats.percent}%`} sublabel={`${monthStats.done} из ${monthStats.total}`} />
+            <StatCard label="серия дней" value={String(streak)} sublabel="дней подряд" emoji="🔥" />
+          </div>
         </header>
 
-        <section className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <StatCard label="Сегодня" value={`${progress}%`} extra={`${completedToday} из ${activeGoals.length} целей`} />
-          <StatCard label="Месяц" value={`${monthStats.percent}%`} extra={`${monthStats.done} из ${monthStats.total} целей`} />
-          <StatCard label="Серия" value={String(streak)} extra="дней подряд" />
-        </section>
-
-        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
+        <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="space-y-6">
-            <section className="rounded-[2rem] border border-white/10 bg-[#15151c] p-4 shadow-xl sm:p-5">
-              <div className="mb-4 flex items-center justify-between gap-3">
+            <section className="rounded-[2rem] border border-white/8 bg-[#151519] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.35)] sm:p-5">
+              <div className="mb-5 flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => moveMonth(-1)}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[#23232d] text-2xl leading-none text-white transition hover:bg-[#2c2c38]"
+                  className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#212127] text-2xl text-white/90 transition hover:bg-[#2a2a33]"
                   aria-label="Предыдущий месяц"
                 >
                   ‹
                 </button>
+
                 <div className="text-center">
-                  <p className="text-lg font-bold capitalize">{monthLabel(viewDate)}</p>
-                  <button type="button" onClick={goToday} className="text-sm text-white/40">Сегодня</button>
+                  <p className="text-2xl font-bold capitalize">{monthName(viewDate)}</p>
+                  <button type="button" onClick={goToday} className="mt-1 text-sm text-white/45">
+                    Сегодня
+                  </button>
                 </div>
+
                 <button
                   type="button"
                   onClick={() => moveMonth(1)}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[#23232d] text-2xl leading-none text-white transition hover:bg-[#2c2c38]"
+                  className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#212127] text-2xl text-white/90 transition hover:bg-[#2a2a33]"
                   aria-label="Следующий месяц"
                 >
                   ›
                 </button>
               </div>
 
-              <div className="grid grid-cols-7 gap-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-white/45 sm:gap-2 sm:text-sm">
+              <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-bold uppercase tracking-wide text-white/38 sm:text-sm">
                 {["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"].map((name) => (
                   <div key={name} className="pb-1">{name}</div>
                 ))}
               </div>
 
-              <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+              <div className="grid grid-cols-7 gap-2">
                 {days.map((day, index) => {
                   const key = day ? toKey(day) : `empty-${index}`;
                   const stats = getDayStats(day);
@@ -421,23 +443,23 @@ export default function App() {
                       type="button"
                       disabled={!day}
                       onClick={() => day && setSelectedKey(key)}
-                      className={`min-h-[4.6rem] rounded-2xl px-1 py-2 text-center transition active:scale-[0.98] sm:min-h-[5.3rem] ${
+                      className={`rounded-[1.25rem] px-1 py-2 text-center transition active:scale-[0.98] sm:min-h-[5.25rem] ${
                         !day
                           ? "pointer-events-none opacity-0"
                           : isSelected
-                            ? "bg-white text-[#111116]"
-                            : "border border-white/8 bg-[#111118] text-white hover:bg-[#181820]"
-                      } ${isToday && !isSelected ? "ring-1 ring-white/30" : ""}`}
+                            ? "bg-[#f0f0f2] text-[#101014]"
+                            : "border border-white/7 bg-[#0f0f13] text-white hover:bg-[#15151c]"
+                      } ${isToday && !isSelected ? "ring-1 ring-white/22" : ""}`}
                     >
                       {day && (
                         <>
-                          <div className="text-[clamp(1rem,4vw,1.55rem)] font-black leading-none">{day.getDate()}</div>
-                          <div className={`mx-auto mt-2 h-1.5 w-1.5 rounded-full ${isSelected ? "bg-[#111116]" : "bg-white/60"}`} />
-                          <div className={`mt-1 text-[11px] font-bold ${isSelected ? "text-[#111116]/70" : "text-white/65"}`}>
+                          <div className="text-[clamp(1.05rem,3.9vw,1.55rem)] font-extrabold leading-none">{day.getDate()}</div>
+                          <div className={`mx-auto mt-2 h-1.5 w-1.5 rounded-full ${isSelected ? "bg-[#101014]/65" : "bg-white/55"}`} />
+                          <div className={`mt-1 text-[11px] font-semibold ${isSelected ? "text-[#101014]/65" : "text-white/65"}`}>
                             {stats.done}/{stats.active}
                           </div>
                           <div className={`mx-auto mt-1 h-1 w-[72%] overflow-hidden rounded-full ${isSelected ? "bg-black/15" : "bg-white/10"}`}>
-                            <div className={`h-full rounded-full ${isSelected ? "bg-[#111116]" : "bg-white/60"}`} style={{ width: `${stats.progress}%` }} />
+                            <div className={`h-full rounded-full ${isSelected ? "bg-[#101014]/75" : "bg-white/55"}`} style={{ width: `${stats.progress}%` }} />
                           </div>
                         </>
                       )}
@@ -446,73 +468,177 @@ export default function App() {
                 })}
               </div>
             </section>
-
-            <section className="rounded-[2rem] border border-white/10 bg-[#15151c] p-4 shadow-xl sm:p-5">
-              <h2 className="mb-3 text-2xl font-black">Заметка дня</h2>
-              <textarea
-                value={noteDraft}
-                onChange={(event) => saveNote(event.target.value)}
-                placeholder="Что важно сделать сегодня? Что помешало?"
-                rows={5}
-                className="w-full resize-none rounded-2xl border border-white/10 bg-[#101016] px-4 py-3 text-white outline-none placeholder:text-white/25 focus:border-white/25"
-              />
-            </section>
           </div>
 
           <aside className="space-y-6">
-            <section className="rounded-[2rem] border border-white/10 bg-[#15151c] p-4 shadow-xl sm:p-5">
+            <section className="rounded-[2rem] border border-white/8 bg-[#151519] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.35)] sm:p-5">
               <div className="mb-4 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="truncate text-3xl font-black">{selectedDate.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</h2>
-                  <p className="mt-1 text-sm text-white/50">{completedToday} из {activeGoals.length} целей выполнено</p>
+                <div>
+                  <h2 className="text-3xl font-black">{selectedDate.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</h2>
+                  <p className="mt-1 text-sm text-white/50">Выполнено: {completedToday} из {activeGoals.length}</p>
                 </div>
-                <div className="rounded-full bg-[#23232d] px-4 py-2 text-lg font-black text-white">
+                <div className="rounded-2xl bg-[#0f0f13] px-4 py-2 text-lg font-black">
                   {progress}%
                 </div>
               </div>
 
-              <div className="mb-4 h-2 overflow-hidden rounded-full bg-white/8">
-                <div className="h-full rounded-full bg-white" style={{ width: `${progress}%` }} />
-              </div>
-
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {activeGoals.length === 0 && (
-                  <div className="rounded-3xl border border-white/10 bg-[#111118] p-4 text-sm text-white/45">
-                    На этот день целей пока нет. Нажми плюс сверху.
+                  <div className="rounded-3xl border border-white/8 bg-[#0f0f13] p-4 text-sm text-white/45">
+                    На этот день целей пока нет.
                   </div>
                 )}
 
                 {activeGoals.map((goal) => {
                   const done = Boolean(selectedCompletions[goal.id]);
                   return (
-                    <div key={goal.id} className="flex min-w-0 items-center gap-3 rounded-3xl bg-[#111118] p-3">
+                    <div key={goal.id} className="flex items-center gap-3 rounded-[1.4rem] bg-[#0f0f13] px-3 py-3">
                       <button
                         type="button"
                         onClick={() => toggleGoal(goal.id)}
-                        className={`grid h-11 w-11 shrink-0 place-items-center rounded-full border text-lg transition ${
-                          done ? "border-white bg-white text-[#111116]" : "border-white/20 text-white/30"
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm transition ${
+                          done ? "border-white bg-white text-[#101014]" : "border-white/18 text-white/30"
                         }`}
                         aria-label="Отметить цель"
                       >
                         {done ? "✓" : ""}
                       </button>
+
                       <div className="min-w-0 flex-1">
                         <div className={`truncate text-base font-bold ${done ? "text-white/45 line-through" : "text-white"}`}>{goal.title}</div>
-                        <div className="truncate text-xs text-white/42 sm:text-sm">{goal.color} • {goal.target} • {displayDateRange(goal)}</div>
+                        <div className="truncate text-xs text-white/38 sm:text-sm">
+                          {goal.color} • {goal.target} • {displayDateRange(goal)}
+                        </div>
                       </div>
-                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#1d1d27] text-xl">{goalIcon(goal)}</div>
+
+                      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-[#1c1c22] text-lg">
+                        {goalIcon(goal)}
+                      </div>
+
                       <button
                         type="button"
                         onClick={() => removeGoal(goal.id)}
-                        className="rounded-2xl px-2 py-1 text-xs text-white/35 transition hover:bg-white/5 hover:text-white/70"
-                        aria-label="Удалить цель"
+                        className="rounded-xl px-2 py-1 text-xs text-white/35 transition hover:bg-white/5 hover:text-white/70"
                       >
-                        удалить
+                        🗑️
                       </button>
                     </div>
                   );
                 })}
               </div>
+            </section>
+
+            <section className="rounded-[2rem] border border-white/8 bg-[#151519] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.35)] sm:p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-2xl font-black">Новая цель</h2>
+                <button
+                  type="button"
+                  onClick={openAddForm}
+                  className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-2xl leading-none text-[#101014] transition hover:bg-white/90"
+                  aria-label="Добавить цель"
+                >
+                  <span className="block -translate-y-[1px]">+</span>
+                </button>
+              </div>
+
+              <form onSubmit={addGoal} className="space-y-3">
+                <input
+                  value={newGoal}
+                  onChange={(event) => setNewGoal(event.target.value)}
+                  placeholder="Например: решить 5 задач"
+                  className="w-full rounded-2xl border border-white/10 bg-[#0f0f13] px-4 py-3 text-white outline-none placeholder:text-white/26 focus:border-white/22"
+                />
+
+                <input
+                  value={newTarget}
+                  onChange={(event) => setNewTarget(event.target.value)}
+                  placeholder="Норма: 30 минут / 10 повторов / 1 раз"
+                  className="w-full rounded-2xl border border-white/10 bg-[#0f0f13] px-4 py-3 text-white outline-none placeholder:text-white/26 focus:border-white/22"
+                />
+
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    ["today", "На выбранный день"],
+                    ["range", "На несколько дней"],
+                    ["always", "Каждый день"],
+                  ].map(([type, label]) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setNewGoalType(type)}
+                      className={`rounded-2xl px-2 py-3 text-xs font-bold transition sm:text-sm ${
+                        newGoalType === type ? "bg-white text-[#101014]" : "border border-white/10 bg-[#0f0f13] text-white/65"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {newGoalType === "range" && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="text-sm text-white/45">
+                      С даты
+                      <input
+                        type="date"
+                        value={newStartDate}
+                        onChange={(event) => setNewStartDate(event.target.value)}
+                        className="mt-1 w-full rounded-2xl border border-white/10 bg-[#0f0f13] px-3 py-3 text-white outline-none focus:border-white/22"
+                      />
+                    </label>
+                    <label className="text-sm text-white/45">
+                      По дату
+                      <input
+                        type="date"
+                        value={newEndDate}
+                        onChange={(event) => setNewEndDate(event.target.value)}
+                        className="mt-1 w-full rounded-2xl border border-white/10 bg-[#0f0f13] px-3 py-3 text-white outline-none focus:border-white/22"
+                      />
+                    </label>
+                  </div>
+                )}
+
+                {newGoalType === "today" && (
+                  <div className="rounded-2xl border border-white/10 bg-[#0f0f13] p-3 text-sm text-white/45">
+                    Цель появится только на дату: {shortDate(selectedKey)}.
+                  </div>
+                )}
+
+                {newGoalType === "always" && (
+                  <div className="rounded-2xl border border-white/10 bg-[#0f0f13] p-3 text-sm text-white/45">
+                    Цель будет появляться каждый день как постоянная привычка.
+                  </div>
+                )}
+
+                <button className="w-full rounded-2xl bg-white px-4 py-3 font-black text-[#101014] transition hover:bg-white/92">
+                  + Добавить
+                </button>
+              </form>
+            </section>
+
+            <section className="rounded-[2rem] border border-white/8 bg-[#151519] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.35)] sm:p-5">
+              <h2 className="mb-3 text-2xl font-black">Ближайшие цели</h2>
+              <div className="space-y-3">
+                {upcomingGoals.map((goal) => (
+                  <div key={goal.id} className="rounded-[1.4rem] bg-[#0f0f13] px-4 py-3">
+                    <div className="text-sm font-bold text-white">{goal.title}</div>
+                    <div className="mt-1 text-xs text-white/40">
+                      {displayDateRange(goal)} • {goal.target}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="rounded-[2rem] border border-white/8 bg-[#151519] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.35)] sm:p-5">
+              <h2 className="mb-3 text-2xl font-black">Заметка дня</h2>
+              <textarea
+                value={noteDraft}
+                onChange={(event) => saveNote(event.target.value)}
+                placeholder="Что важно сделать сегодня? Что помешало?"
+                rows={5}
+                className="w-full resize-none rounded-2xl border border-white/10 bg-[#0f0f13] px-4 py-3 text-white outline-none placeholder:text-white/26 focus:border-white/22"
+              />
             </section>
           </aside>
         </div>
@@ -520,7 +646,7 @@ export default function App() {
 
       {showAddForm && (
         <div className="fixed inset-0 z-50 flex items-end bg-black/65 p-3 backdrop-blur-sm sm:items-center sm:justify-center">
-          <section className="w-full rounded-[2rem] border border-white/10 bg-[#171720] p-4 shadow-2xl sm:max-w-lg sm:p-6">
+          <section className="w-full rounded-[2rem] border border-white/8 bg-[#17171d] p-4 shadow-2xl sm:max-w-lg sm:p-6">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-2xl font-black">Новая цель</h2>
               <button
@@ -537,14 +663,14 @@ export default function App() {
                 value={newGoal}
                 onChange={(event) => setNewGoal(event.target.value)}
                 placeholder="Например: решить 5 задач"
-                className="w-full rounded-2xl border border-white/10 bg-[#101016] px-4 py-3 text-white outline-none placeholder:text-white/28 focus:border-white/25"
+                className="w-full rounded-2xl border border-white/10 bg-[#0f0f13] px-4 py-3 text-white outline-none placeholder:text-white/28 focus:border-white/22"
               />
 
               <input
                 value={newTarget}
                 onChange={(event) => setNewTarget(event.target.value)}
                 placeholder="Норма: 30 минут / 10 повторов / 1 раз"
-                className="w-full rounded-2xl border border-white/10 bg-[#101016] px-4 py-3 text-white outline-none placeholder:text-white/28 focus:border-white/25"
+                className="w-full rounded-2xl border border-white/10 bg-[#0f0f13] px-4 py-3 text-white outline-none placeholder:text-white/28 focus:border-white/22"
               />
 
               <div className="grid grid-cols-3 gap-2">
@@ -558,7 +684,7 @@ export default function App() {
                     type="button"
                     onClick={() => setNewGoalType(type)}
                     className={`rounded-2xl px-2 py-2 text-sm font-bold transition ${
-                      newGoalType === type ? "bg-white text-[#111116]" : "bg-[#101016] text-white/55 border border-white/10"
+                      newGoalType === type ? "bg-white text-[#101014]" : "border border-white/10 bg-[#0f0f13] text-white/60"
                     }`}
                   >
                     {label}
@@ -574,7 +700,7 @@ export default function App() {
                       type="date"
                       value={newStartDate}
                       onChange={(event) => setNewStartDate(event.target.value)}
-                      className="mt-1 w-full rounded-2xl border border-white/10 bg-[#101016] px-3 py-3 text-white outline-none focus:border-white/25"
+                      className="mt-1 w-full rounded-2xl border border-white/10 bg-[#0f0f13] px-3 py-3 text-white outline-none focus:border-white/22"
                     />
                   </label>
                   <label className="text-sm text-white/45">
@@ -583,25 +709,25 @@ export default function App() {
                       type="date"
                       value={newEndDate}
                       onChange={(event) => setNewEndDate(event.target.value)}
-                      className="mt-1 w-full rounded-2xl border border-white/10 bg-[#101016] px-3 py-3 text-white outline-none focus:border-white/25"
+                      className="mt-1 w-full rounded-2xl border border-white/10 bg-[#0f0f13] px-3 py-3 text-white outline-none focus:border-white/22"
                     />
                   </label>
                 </div>
               )}
 
               {newGoalType === "today" && (
-                <div className="rounded-2xl border border-white/10 bg-[#101016] p-3 text-sm text-white/45">
+                <div className="rounded-2xl border border-white/10 bg-[#0f0f13] p-3 text-sm text-white/45">
                   Цель появится только на дату: {shortDate(selectedKey)}.
                 </div>
               )}
 
               {newGoalType === "always" && (
-                <div className="rounded-2xl border border-white/10 bg-[#101016] p-3 text-sm text-white/45">
+                <div className="rounded-2xl border border-white/10 bg-[#0f0f13] p-3 text-sm text-white/45">
                   Цель будет появляться каждый день как постоянная привычка.
                 </div>
               )}
 
-              <button className="w-full rounded-2xl bg-white px-4 py-3 font-black text-[#111116] transition hover:bg-white/90">
+              <button className="w-full rounded-2xl bg-white px-4 py-3 font-black text-[#101014] transition hover:bg-white/92">
                 Добавить цель
               </button>
             </form>
