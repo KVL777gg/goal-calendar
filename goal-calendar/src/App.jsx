@@ -81,14 +81,14 @@ function activeGoalsForDate(goals, dateKey) {
 
 function displayDateRange(goal) {
   const g = normalizeGoal(goal);
-  if (g.scheduleType === "always") return "каждый день";
+  if (g.scheduleType === "always") return "Каждый день";
   if (g.startDate === g.endDate) return shortDate(g.startDate);
   return `${shortDate(g.startDate)} — ${shortDate(g.endDate)}`;
 }
 
 function goalIcon(goal) {
   const text = `${goal.title} ${goal.category}`.toLowerCase();
-  if (text.includes("сон") || text.includes("режим")) return "🌙";
+  if (text.includes("сон") || text.includes("сежим")) return "🌙";
   if (text.includes("трен") || text.includes("растяж") || text.includes("спорт")) return "🏋️";
   if (text.includes("подтяг")) return "💪";
   if (text.includes("контроль") || text.includes("учё") || text.includes("учеб") || text.includes("задач")) return "📚";
@@ -166,7 +166,7 @@ function defaultData() {
       },
     ],
     completions: { [today]: {} },
-    notes: { [today]: "Начни с 1–2 целей, не перегружай календарь." },
+    notes: { [today]: "Напиши мысли о дне." },
   };
 }
 
